@@ -2,6 +2,7 @@ package com.microsoft.cisl.hashtrend;
 
 import backtype.storm.Config;
 import backtype.storm.LocalCluster;
+import backtype.storm.StormSubmitter;
 import backtype.storm.generated.AlreadyAliveException;
 import backtype.storm.generated.InvalidTopologyException;
 import backtype.storm.generated.NotAliveException;
@@ -13,6 +14,7 @@ import com.microsoft.cisl.hashtrend.bolt.TotalHashTrendRankingsBolt;
 import com.microsoft.cisl.hashtrend.spout.TweetStreamSpout;
 import com.microsoft.cisl.hashtrend.window.RankableObjectWithFields;
 import com.microsoft.cisl.hashtrend.window.Rankings;
+import org.apache.log4j.PropertyConfigurator;
 import org.apache.log4j.Logger;
 
 /**
@@ -27,7 +29,7 @@ public class TwitterRollingTrendsTopology {
 
     private static final Logger LOG = Logger.getLogger(TwitterRollingTrendsTopology.class);
     private static final int DEFAULT_RUNTIME_IN_SECONDS = 60;
-    private static int DEFAULT_PARALLELISM = 5;
+    private static int DEFAULT_PARALLELISM = 4;
     private static final int TOP_N = 5;
 
     private final TopologyBuilder builder;
@@ -51,10 +53,16 @@ public class TwitterRollingTrendsTopology {
     private static Config createTopologyConfiguration() {
         Config conf = new Config();
         conf.setDebug(true);
+        conf.setMaxSpoutPending(10);
+        conf.put(Config.TOPOLOGY_WORKER_CHILDOPTS, "-XX:+HeapDumpOnOutOfMemoryError");
         conf.registerSerialization(Rankings.class);
         conf.registerSerialization(RankableObjectWithFields.class);
         conf.setFallBackOnJavaSerialization(true);
-//        conf.setNumStmgrs(DEFAULT_PARALLELISM);
+        conf.setContainerCpuRequested(1);
+        conf.setComponentRam("tweet", 512L * 1024 * 1024);
+        conf.setComponentRam("obj", 512L * 1024 * 1024);
+        //Number of Stream Managers In the Topology
+        conf.setNumStmgrs(DEFAULT_PARALLELISM);
         return conf;
     }
 
@@ -65,20 +73,26 @@ public class TwitterRollingTrendsTopology {
         String totalRankerId = "hashFinalRanker";
 
         builder.setSpout(spoutId, new TweetStreamSpout(), 1);
-        builder.setBolt(counterId, new RollingHashCountBolt(60, 5), DEFAULT_PARALLELISM)
+        builder.setBolt(counterId, new RollingHashCountBolt(60, 4), DEFAULT_PARALLELISM)
                 .fieldsGrouping(spoutId, new Fields("tweet"));
         builder.setBolt(intermediateRankerId, new IntermediateHashRankingsBolt(TOP_N), DEFAULT_PARALLELISM)
                 .fieldsGrouping(counterId, new Fields("obj"));
         builder.setBolt(totalRankerId, new TotalHashTrendRankingsBolt(TOP_N)).globalGrouping(intermediateRankerId);
     }
 
-    private void runLocally() throws AlreadyAliveException, InvalidTopologyException {
+    private void runLocally(String topologyName) throws AlreadyAliveException, InvalidTopologyException {
         LocalCluster cluster = new LocalCluster();
-        cluster.submitTopology("Treding-Hashtag-Topology", topologyConfig, builder.createTopology());
+        cluster.submitTopology(topologyName, topologyConfig, builder.createTopology());
     }
 
-    private void runRemotely(){
-        //        StormSubmitter.submitTopology(args[0], conf, builder.createTopology());
+    private void runRemotely(String topologyName ){
+        try {
+            StormSubmitter.submitTopology(topologyName, topologyConfig, builder.createTopology());
+        } catch (AlreadyAliveException e) {
+            e.printStackTrace();
+        } catch (InvalidTopologyException e) {
+            e.printStackTrace();
+        }
     }
 
 
@@ -88,24 +102,21 @@ public class TwitterRollingTrendsTopology {
      * Main method
      */
     public static void main(String[] args) throws AlreadyAliveException, InvalidTopologyException, NotAliveException {
+
         String topologyName = "trendingHashtags";
-//        if (args.length >= 1) {
-//            topologyName = args[0];
-//        }
         boolean runLocally = true;
-//        if (args.length >= 2 && args[1].equalsIgnoreCase("remote")) {
-//            runLocally = false;
-//        }
+        if (args.length >= 1) {
+            runLocally = false;
+        }
 
-
-        LOG.info("Topology name: " + topologyName);
+        LOG.info(" Topology name: " + topologyName + "RunLocally: " + runLocally );
         TwitterRollingTrendsTopology twitterRollingTrendsTopology = new TwitterRollingTrendsTopology(topologyName);
         if (runLocally) {
             LOG.info("Running in local mode");
-            twitterRollingTrendsTopology.runLocally();
+            twitterRollingTrendsTopology.runLocally(topologyName);
         } else {
             LOG.info("Running in remote (cluster) mode");
-            twitterRollingTrendsTopology.runRemotely();
+            twitterRollingTrendsTopology.runRemotely(topologyName);
         }
     }
 

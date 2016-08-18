@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.microsoft.cisl</groupId>
-    <artifactId>1.0</artifactId>
+    <artifactId>TwitterTrendsTopology</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <developers>
@@ -17,7 +17,8 @@
     </developers>
 
     <properties>
-    <java-version>1.8</java-version>
+        <java-version>1.8</java-version>
+        <maven-compiler-plugin>3.5.1</maven-compiler-plugin>
     </properties>
 
     <dependencies>
@@ -65,12 +66,56 @@
         <resources>
             <resource>
                 <directory>${basedir}/resources</directory>
-                <filtering>false</filtering>
-                <includes>
-                    <include>twitter4j.properties</include>
-                </includes>
+                <!--<filtering>false</filtering>-->
+                <!--<includes>-->
+                    <!--<include>twitter4j.properties</include>-->
+                <!--</includes>-->
             </resource>
         </resources>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.5.1</version>
+                <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>2.4</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>2.3</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <artifactSet>
+                                <excludes>
+                                    <exclude>junit:junit</exclude>
+                                </excludes>
+                            </artifactSet>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
 
 </project>
