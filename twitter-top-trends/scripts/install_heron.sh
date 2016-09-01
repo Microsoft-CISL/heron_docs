@@ -106,15 +106,15 @@ function heron_install_centos(){
     # Python 2.7 installation path
     export PATH="/usr/local/bin:$PATH"
 
-    wget https://github.com/twitter/heron/releases/download/0.14.1/heron-tools-install-0.14.1-centos.sh
-    wget https://github.com/twitter/heron/releases/download/0.14.1/heron-client-install-0.14.1-centos.sh
-    chmod +x ./heron-client-install-0.14.1-centos.sh
-    chmod +x ./heron-tools-install-0.14.1-centos.sh
-    ./heron-client-install-0.14.1-centos.sh --user
+    wget https://github.com/twitter/heron/releases/download/0.14.2/heron-tools-install-0.14.2-centos.sh
+    wget https://github.com/twitter/heron/releases/download/0.14.2/heron-client-install-0.14.2-centos.sh
+    chmod +x ./heron-client-install-0.14.2-centos.sh
+    chmod +x ./heron-tools-install-0.14.2-centos.sh
+    ./heron-client-install-0.14.2-centos.sh --user
     export PATH=$PATH:~/bin
-    ./heron-tools-install-0.14.1-centos.sh --user
+    ./heron-tools-install-0.14.2-centos.sh --user
     heron version
-    rm ./heron-client-install-0.14.1-centos.sh ./heron-tools-install-0.14.1-centos.sh
+    rm ./heron-client-install-0.14.2-centos.sh ./heron-tools-install-0.14.2-centos.sh
 }
 
 function heron_submit_local_exclamationTopology(){
@@ -136,6 +136,19 @@ function heron_submit_yarn_twitterTrendsTopology(){
     export PATH=$PATH:~/bin
     heron submit yarn TwitterTrendsTopology-1.0-SNAPSHOT.jar \
            com.microsoft.cisl.hashtrend.TwitterRollingTrendsTopology TwitterRollingTrendsTopology
+}
+
+function heron_submit_custom_yarn_twitterTrendsTopology(){
+    export PATH=$PATH:~/bin
+    heron submit yarn TwitterTrendsTopology-1.0-SNAPSHOT.jar \
+           com.microsoft.cisl.hashtrend.TwitterRollingTrendsTopology TwitterRollingTrendsTopology \
+           --config-property "heron.class.packing.algorithm=com.twitter.heron.packing.roundrobin.ResourceCompliantRRPacking"
+
+}
+
+function heron_kill_yarn_twitterTrendsTopology(){
+    export PATH=$PATH:~/bin
+    heron kill yarn trendingHashtags
 }
 
 function heron_activate_local_topology(){
@@ -179,6 +192,8 @@ display_usage() {
     echo "   -heron-ui                  Start Heron UI"
     echo "   -heron-tracker             Start Heron Tracker"
     echo "   -heron-submit-yarn-trends  Submits a YARN TwitterTrendsTopology"
+    echo "   -heron-custom-yarn-trends  Submits a custom YARN TwitterTrendsTopology"
+    echo "   -heron-kill-yarn-trends    Kills YARN's TwitterTrendsTopology"
     echo "   -heron-submit-yarn         Submits a YARN ExclamationTopology"
     echo "   -heron-submit-local        Submits a local ExclamationTopology"
     echo "   -heron-activate-local      Activates a local ExclamationTopology"
@@ -216,6 +231,14 @@ case "$1" in
     ;;
   (-heron-submit-yarn-trends)
     heron_submit_yarn_twitterTrendsTopology
+    exit
+    ;;
+  (-heron-custom-yarn-trends)
+    heron_submit_custom_yarn_twitterTrendsTopology
+    exit
+    ;;
+  (-heron-kill-yarn-trends)
+    heron_kill_yarn_twitterTrendsTopology
     exit
     ;;
   (-heron-submit-yarn)

@@ -38,6 +38,11 @@ public class TwitterRollingTrendsTopology {
     private final int runtimeInSeconds;
 
 
+    private static String spoutId = "tweetStreamer";
+    private static String counterId = "hashCounter";
+    private static String intermediateRankerId = "hashIntermediateRanker";
+    private static String totalRankerId = "hashFinalRanker";
+
     public TwitterRollingTrendsTopology(String topologyName){
         builder = new TopologyBuilder();
         this.topologyName = topologyName;
@@ -58,19 +63,17 @@ public class TwitterRollingTrendsTopology {
         conf.registerSerialization(Rankings.class);
         conf.registerSerialization(RankableObjectWithFields.class);
         conf.setFallBackOnJavaSerialization(true);
-        conf.setContainerCpuRequested(1);
-        conf.setComponentRam("tweet", 512L * 1024 * 1024);
-        conf.setComponentRam("obj", 512L * 1024 * 1024);
+        conf.setContainerCpuRequested(2);
+        conf.setComponentRam(spoutId, 1024L * 1024 * 1024);
+        conf.setComponentRam(counterId, 512L * 1024 * 1024);
+        conf.setComponentRam(intermediateRankerId, 512L * 1024 * 1024);
+        conf.setComponentRam(totalRankerId, 1024L * 1024 * 1024);
         //Number of Stream Managers In the Topology
         conf.setNumStmgrs(DEFAULT_PARALLELISM);
         return conf;
     }
 
     private void wireTopology() throws InterruptedException {
-        String spoutId = "tweetStreamer";
-        String counterId = "hashCounter";
-        String intermediateRankerId = "hashIntermediateRanker";
-        String totalRankerId = "hashFinalRanker";
 
         builder.setSpout(spoutId, new TweetStreamSpout(), 1);
         builder.setBolt(counterId, new RollingHashCountBolt(60, 4), DEFAULT_PARALLELISM)
